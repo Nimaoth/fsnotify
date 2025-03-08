@@ -1,12 +1,14 @@
 when defined(windows):
-  import os, times
-  import xio/windows/base/[fileapi, handleapi]
+  import os, times, windows/winlean
 elif defined(linux):
   import posix
 elif defined(macosx):
   import posix except Time
   import times
 
+type
+  WCHAR* = WideCString
+  LPCWSTR* = ptr WCHAR
 
 type
   FileEventAction* {.pure.} = enum
@@ -51,7 +53,7 @@ when defined(windows):
 
   proc getFileId(name: string): uint =
     var x = newWideCString(name)
-    result = uint getFileAttributesW(cast[LPCWSTR](addr x))
+    result = uint getFileAttributesW(x)
 
   proc `name=`*(data: var PathEventData, name: string) =
     data.name = name
@@ -124,7 +126,7 @@ proc initPathEvent*(name: string, action: FileEventAction, newName = ""): PathEv
 
 proc getUniqueFileId*(name: string): uint64 =
   when defined(windows):
-    let 
+    let
       tid = getCreationTime(name)
       id = getFileId(name)
     result = uint64(toWinTime(tid)) xor id

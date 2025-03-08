@@ -1,7 +1,8 @@
-import xio/linux/inotify
 import base
 import std/[os, posix]
+import posix/inotify
 
+var IN_NONBLOCK {.importc: "IN_NONBLOCK", header: "<sys/inotify.h>".}: cint
 
 proc initEventList*(name: string, wd: cint): EventList =
   EventList(name: name, wd: wd)
@@ -16,7 +17,7 @@ proc initFile(data: var PathEventData) =
 proc initFileEventData*(name: string, cb: EventCallback): PathEventData =
   result = PathEventData(kind: PathKind.File)
   result.name = name
-  result.handle = inotify_init()
+  result.handle = inotify_init1(IN_NONBLOCK)
   result.buffer = newString(1024 * 4)
   result.cb = cb
 
@@ -25,7 +26,7 @@ proc initFileEventData*(name: string, cb: EventCallback): PathEventData =
 
 proc initDirEventData*(name: string, cb: EventCallback): PathEventData =
   result = PathEventData(kind: PathKind.Dir)
-  result.handle = inotify_init()
+  result.handle = inotify_init1(IN_NONBLOCK)
   result.buffer = newString(1024 * 4)
   result.cb = cb
 
@@ -39,7 +40,7 @@ proc filecb*(data: var PathEventData) =
   if data.exists:
     if fileExists(data.name):
       let size = posix.read(data.handle, data.buffer.cstring, data.buffer.len)
-  
+
       if size > 0:
         var buf = cast[pointer](data.buffer.cstring)
         var events: seq[PathEvent]
@@ -82,7 +83,7 @@ proc filecb*(data: var PathEventData) =
 proc dircb*(data: var PathEventData) =
   while true:
     let size = posix.read(data.handle, data.buffer.cstring, data.buffer.len)
-    
+
     if size <= 0:
       break
 

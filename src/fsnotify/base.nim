@@ -40,9 +40,12 @@ when defined(windows):
         uniqueId*: uint64
       of PathKind.Dir:
         handle*: Handle
-        buffer*: string
         reads*: DWORD
-        over*: OVERLAPPED
+        # This needs to be heap allocated because we give a pointer to this to the OS to write to,
+        # so it can't be on the stack. Same about the buffer (not sure if nim guarantees that it won't move,
+        # so better safe than sorry)
+        over*: ref OVERLAPPED
+        buffer*: ref string
 
   proc close*(data: PathEventData) =
     case data.kind

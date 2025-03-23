@@ -54,23 +54,25 @@ proc readDirectoryChangesW*(
 ): WINBOOL {.libKernel32, importc: "ReadDirectoryChangesW".}
 
 proc startQueue*(data: var PathEventData) =
-  discard readDirectoryChangesW(data.handle, data.buffer.cstring,
-              cast[DWORD](data.buffer.len), 0, FILE_NOTIFY_CHANGE_FILE_NAME or
+  discard readDirectoryChangesW(data.handle, data.buffer[].cstring,
+              cast[DWORD](data.buffer[].len), 0, FILE_NOTIFY_CHANGE_FILE_NAME or
               FILE_NOTIFY_CHANGE_DIR_NAME or
-              FILE_NOTIFY_CHANGE_LAST_WRITE, data.reads, addr data.over, nil)
+              FILE_NOTIFY_CHANGE_LAST_WRITE, data.reads, data.over[].addr, nil)
 
 
 proc init(data: var PathEventData) =
   let name = newWideCString(data.name)
   data.name = expandFilename(data.name)
   data.exists = true
-  data.buffer = newString(1024)
+  data.buffer[] = newString(1024)
   data.handle = createFileW(name, FILE_LIST_DIRECTORY, FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
                               OPEN_EXISTING, FILE_FLAG_OVERLAPPED or FILE_FLAG_BACKUP_SEMANTICS, 0)
   startQueue(data)
 
 proc initDirEventData*(name: string, cb: EventCallback): PathEventData =
   result = PathEventData(kind: PathKind.Dir, name: name)
+  new(result.over)
+  new(result.buffer)
   result.cb = cb
 
   if dirExists(name):
@@ -96,19 +98,18 @@ proc dircb*(data: var PathEventData) =
 
       var event: seq[PathEvent]
       for _ in 0 ..< 2:
-        if getOverlappedResult(data.handle, addr data.over, data.reads, 0) != 0:
-          var buf = cast[pointer](data.buffer.substr(0, data.reads.int - 1).cstring)
+        if getOverlappedResult(data.handle, data.over[].addr, data.reads, 0) != 0:
           var oldName = ""
-          var next: int
+          var next: int = 0
 
           while true:
-            let info = cast[ptr FILE_NOTIFY_INFORMATION](cast[ByteAddress](buf) + next)
+            let info = cast[ptr FILE_NOTIFY_INFORMATION](data.buffer[][next].addr)
 
             if info == nil:
               break
 
             ## TODO reduce copy
-            var tmp = newWideCString("", info.FileNameLength.int div 2)
+            var tmp = newWideCString(info.FileNameLength.int div 2)
             for idx in 0 ..< info.FileNameLength.int div 2:
               tmp[idx] = info.FileName[idx]
 

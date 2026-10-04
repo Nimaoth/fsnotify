@@ -31,6 +31,7 @@ when defined(windows):
   type
     PathEventData* = object
       name*: string
+      namew*: WideCString
       exists*: bool
       cb: EventCallback
 
@@ -46,13 +47,6 @@ when defined(windows):
         # so better safe than sorry)
         over*: ref OVERLAPPED
         buffer*: ref string
-
-  proc close*(data: PathEventData) =
-    case data.kind
-    of PathKind.File:
-      discard
-    of PathKind.Dir:
-      discard data.handle.closeHandle()
 
   proc getFileId(name: string): uint =
     var x = newWideCString(name)

@@ -52,6 +52,27 @@ proc register*(watcher: var Watcher, pathList: seq[string], cb: EventCallback,
   for path in pathList:
     watcher.register(path, cb, treatAsFile)
 
+when defined(windows):
+  proc close*(data: var PathEventData) =
+    case data.kind
+    of PathKind.File:
+      closeFileEventData(data)
+    of PathKind.Dir:
+      closeDirEventData(data)
+
+  proc close*(watcher: var Watcher) =
+    watcher.timer.queue.setLen(0)
+    var firstError = ""
+    for path in watcher.path.mitems:
+      try:
+        path.close()
+      except OSError as error:
+        if firstError.len == 0:
+          firstError = error.msg
+    watcher.path.setLen(0)
+    if firstError.len != 0:
+      raise newException(OSError, firstError)
+
 template process*(watcher: var Watcher) =
   process(watcher.timer)
 

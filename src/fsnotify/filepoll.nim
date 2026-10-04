@@ -30,11 +30,12 @@ proc initFileEventData*(name: string, cb: EventCallback): PathEventData =
 #     if dirExists(result[idx].name):
 #       init(result[idx])
 
-proc close*(data: PathEventData) =
+proc closeFileEventData*(data: var PathEventData) =
   discard
 
 proc filecb*(data: var PathEventData) =
   if data.exists:
+    # todo: fileExists allocates a wide string every time
     if fileExists(data.name):
       let now = getLastModificationTime(data.name)
       if now != data.lastModificationTime:

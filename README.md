@@ -28,3 +28,6 @@ while true:
   sleep(500)
   process(watcher)
 ```
+
+On Windows, call `watcher.close()` when finished to cancel pending directory
+reads and release the native directory handles.
